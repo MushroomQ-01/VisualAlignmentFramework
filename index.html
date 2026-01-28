@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Visual Alignment Framework</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f6f7f8;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 24px auto;
+    padding: 16px;
+  }
+
+  h1 {
+    margin-bottom: 12px;
+  }
+
+  .form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  label {
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  select {
+    width: 100%;
+    padding: 8px;
+  }
+
+  .chart-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  canvas {
+    background: #fff;
+    border-radius: 8px;
+    display: block;
+  }
+
+  .info {
+    margin-top: 24px;
+    padding: 16px;
+    background: #ffffff;
+    border-radius: 8px;
+    border-left: 4px solid #4682ff;
+  }
+
+  .info h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+  }
+
+  .muted {
+    color: #666;
+    font-size: 0.9rem;
+  }
+
+  .game-thumb {
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    background: #eee;
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>Visual Alignment Framework</h1>
+
+  <div class="form">
+    <div>
+      <label>Serious Game Type</label>
+      <select id="gameType">
+        <option value="health" selected>Health Care</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Target Age Group</label>
+      <select id="ageGroup">
+        <option value="children">Children</option>
+        <option value="teens" selected>Teens</option>
+        <option value="adults">Adults</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Learning Goal</label>
+      <select id="learningGoal">
+        <option value="general" selected>General</option>
+        <option value="professional">Professionals</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="chart-wrapper">
+    <canvas id="chart" width="700" height="700"></canvas>
+  </div>
+
+  <div class="info" id="infoPanel"></div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("chart");
+  const ctx = canvas.getContext("2d");
+
+  const gameType = document.getElementById("gameType");
+  const ageGroup = document.getElementById("ageGroup");
+  const learningGoal = document.getElementById("learningGoal");
+  const infoPanel = document.getElementById("infoPanel");
+
+  const padding = 100;
+
+  const fidelityIndex = { low: 0, medium: 1, high: 2 };
+  const specificityIndex = { universal: 0, specific: 1 };
+
+  const mapping = {
+    health: {
+      adults: {
+        general: [["medium", "universal"]],
+        professional: [["medium", "specific"], ["high", "specific"]]
+      },
+      teens: {
+        general: [["medium", "universal"]],
+        professional: [["medium", "specific"]]
+      },
+      children: {
+        general: [["medium", "universal"]],
+        professional: []
+      }
+    }
+  };
+
+  const examples = {
+    health: {
+      teens: {
+        general: {
+          title: "Happy Heart",
+          image: "https://raw.githubusercontent.com/MushroomQ-01/VisualAlignmentFramework/09f834e3e48de9cdd6c09a99901e53d061f27d9d/Images/Start_1920_02_Layer_Reference.png",
+          description:
+            "Happy Heart is a mobile serious game that aims to promote a healthy lifestyle through diet and physical activity to prevent future cardiovascular disease for Nepalese and Swedish teenagers.",
+          download: "https://lebram.se/happyheart/",
+          website: "https://huabai.my.canva.site/others"
+        }
+      }
+    }
+  };
+
+  let animatedRects = [];
+
+  function grid() {
+    const size = canvas.width - padding * 2;
+    return {
+      x: padding,
+      y: padding,
+      size,
+      cellW: size / 2,
+      cellH: size / 3
+    };
+  }
+
+  function drawGrid() {
+    const g = grid();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#f2f2f2";
+    ctx.fillRect(g.x, g.y, g.size, g.size);
+
+    ctx.strokeStyle = "#9aa4ad";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(g.x + g.cellW, g.y);
+    ctx.lineTo(g.x + g.cellW, g.y + g.size);
+    ctx.stroke();
+
+    for (let i = 1; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(g.x, g.y + g.cellH * i);
+      ctx.lineTo(g.x + g.size, g.y + g.cellH * i);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = "#2f3a40";
+    ctx.lineWidth = 4;
+
+    ctx.beginPath();
+    ctx.moveTo(g.x, g.y);
+    ctx.lineTo(g.x, g.y + g.size);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(g.x, g.y + g.size);
+    ctx.lineTo(g.x + g.size, g.y + g.size);
+    ctx.stroke();
+
+    ctx.fillStyle = "#333";
+    ctx.font = "14px sans-serif";
+
+    ctx.fillText("High", g.x - 45, g.y + 16);
+    ctx.fillText("Medium", g.x - 60, g.y + g.size / 2);
+    ctx.fillText("Low", g.x - 40, g.y + g.size - 8);
+
+    ctx.fillText("Universal", g.x + 20, g.y + g.size + 28);
+    ctx.fillText("Specific", g.x + g.cellW + 20, g.y + g.size + 28);
+
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText("Objects Specificity", g.x + g.size / 2 - 70, canvas.height - 20);
+
+    ctx.save();
+    ctx.translate(30, g.y + g.size / 2 + 40);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("Visual Fidelity", 0, 0);
+    ctx.restore();
+  }
+
+  function cellRect(fidelity, specificity) {
+    const g = grid();
+    return {
+      x: g.x + specificityIndex[specificity] * g.cellW,
+      y: g.y + (2 - fidelityIndex[fidelity]) * g.cellH,
+      w: g.cellW,
+      h: g.cellH
+    };
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function drawHighlight(r) {
+    ctx.save();
+    ctx.globalAlpha = r.opacity;
+    ctx.fillStyle = "rgba(70,130,255,0.25)";
+    ctx.strokeStyle = "#4682ff";
+    ctx.lineWidth = 3;
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
+  }
+
+  function animateRects(targets) {
+    const start = animatedRects.length
+      ? animatedRects
+      : targets.map(t => ({ ...t, y: t.y + 60, opacity: 0 }));
+
+    const duration = 400;
+    const startTime = performance.now();
+
+    function frame(now) {
+      const p = Math.min((now - startTime) / duration, 1);
+      const e = easeOutCubic(p);
+
+      animatedRects = targets.map((t, i) => {
+        const s = start[i] || t;
+        return {
+          x: s.x + (t.x - s.x) * e,
+          y: s.y + (t.y - s.y) * e,
+          w: t.w,
+          h: t.h,
+          opacity: e
+        };
+      });
+
+      drawGrid();
+      animatedRects.forEach(drawHighlight);
+
+      if (p < 1) requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function updateInfo() {
+    const e =
+      examples?.[gameType.value]?.[ageGroup.value]?.[learningGoal.value];
+
+    if (!e) {
+      infoPanel.innerHTML =
+        "<h2>Game Examples</h2><p class='muted'>No example available for this combination.</p>";
+      return;
+    }
+
+    infoPanel.innerHTML = `
+      <img src="${e.image}" alt="${e.title} screenshot" class="game-thumb" />
+      <h2>Game Example: ${e.title}</h2>
+      <p>${e.description}</p>
+      <p><strong>Download:</strong> <a href="${e.download}" target="_blank">${e.download}</a></p>
+      <p><strong>Website:</strong> <a href="${e.website}" target="_blank">${e.website}</a></p>
+    `;
+  }
+
+  function update() {
+    const areas =
+      mapping?.[gameType.value]?.[ageGroup.value]?.[learningGoal.value] || [];
+
+    const targets = areas.map(([f, s]) => cellRect(f, s));
+
+    if (targets.length === 0) {
+      animatedRects = [];
+      drawGrid();
+    } else {
+      animateRects(targets);
+    }
+
+    updateInfo();
+  }
+
+  [gameType, ageGroup, learningGoal].forEach(el =>
+    el.addEventListener("change", update)
+  );
+
+  update();
+})();
+</script>
+</body>
+</html>
